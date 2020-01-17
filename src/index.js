@@ -1,50 +1,14 @@
 import "./styles.css";
-import * as Canvas from "./canvas";
-import Vec3 from './Vec3';
-import Vec2 from './Vec2';
+import Mesh from './Mesh';
+import Renderer from "./Renderer";
+import Mouse from './Mouse';
+import Quat from './Quat';
+import Euler from './Euler';
+
 // https://stackoverflow.com/questions/40454789/computing-face-normals-and-winding
 
-class Mesh {
-  constructor() {
-    this.color = new Vec3();
-    this.position = new Vec3();
-    this.rotation = new Vec3();
-    this.vertices = [];
-    this.indices = [];
-    this.faces = [];
-  }
-  
-  generateFaces() {
-    const { indices: idx, vertices: vert } = this;
-    const faces = [];
-    for (let i = 0; i < idx.length; i+= 3) {
-      const i0 = idx[i + 0] * 3;
-      const i1 = idx[i + 1] * 3;
-      const i2 = idx[i + 2] * 3;
-      faces.push([
-        new Vec3(vert[i0], vert[i0 + 1], vert[i0 + 2]),
-        new Vec3(vert[i1], vert[i1 + 1], vert[i1 + 2]),
-        new Vec3(vert[i2], vert[i2 + 1], vert[i2 + 2]),
-      ]);
-    }
-    return faces;
-  }
-
-  generateNormals() {
-    const { faces } = this;
-    const normals = [];
-    const u = new Vec3();
-    const v = new Vec3();
-    for (let i = 0; i < faces.length; i++) {
-      const [a, b, c] = faces[i];
-      v.copy(c).sub(b);
-      u.copy(a).sub(b);
-      v.cross(u).normalize();
-      normals.push(v.clone());
-    }
-    return normals;
-  }
-}
+const QUAT = new Quat();
+const EULER = new Euler();
 
 class BoxMesh extends Mesh {
   constructor(size) {
@@ -67,98 +31,46 @@ class BoxMesh extends Mesh {
   }
 }
 
-function transform(v, m, target) {
-  target.x = m[0] * v.x + m[1] * v.y + m[2] * v.z + m[3];
-  target.y = m[4] * v.x + m[5] * v.y + m[6] * v.z + m[7];
-  target.z = m[8] * v.x + m[9] * v.y + m[10] * v.z + m[11];
-}
-
-class Engine {
+class Demo {
   constructor() {
-    this.canvas = Canvas.create("js-canvas");
-    Canvas.resize(this.canvas, 500, 500);
-    this.box = new BoxMesh(10);
-    console.log(this.box);
-    this.theta = 0;
+    this.renderer = new Renderer({ elementId: 'js-canvas'});
+    this.renderer.resize(500, 500);
+    this.lastTime = 0;
+    this.box = this.createBox();
+    this.render();
+    this.mouse = new Mouse({
+      domElement: this.renderer.canvas.el,
+      onDrag: this.onMouseDrag.bind(this),
+    });
+  }
+
+  createBox() {
+    const box = new BoxMesh(10);
+    box.rotation.x = Math.PI / 4;
+    box.rotation.z = Math.PI / 4;
+    box.position.z = 5;
+    box.quaternion.fromEuler(box.rotation);
+    box.updateMatrix();
+    return box;
+  }
+
+  onMouseDrag(x, y) {
+    const { box } = this;   
+    const xRad = x * (Math.PI / 180);
+    const yRad = y * (Math.PI / 180);
+    EULER.set(yRad, -xRad, 0);
+    QUAT.fromEuler(EULER);
+    box.quaternion.multiplyQuaternions(QUAT, box.quaternion);
+    box.rotation.fromQuaternion(box.quaternion);
+    box.updateMatrix();
     this.render();
   }
 
-  drawTriangle(p0, p1, p2) {
-    const { ctx } = this.canvas;
-    ctx.strokeStyle = ctx.fillStyle;
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p0.x, p0.y);
-    ctx.stroke();
-    ctx.fill();
-  }
-
-  projectPoint(v, target) {
-    const { w, h } = this.canvas;
-    const dist = 100;
-    target.x = w / 2 + dist * v.x / v.z;
-    target.y = h / 2 + dist * v.y / v.z;
-  }
-
-  calculateLight(lightPosition, normal) {
-    const { ctx } = this.canvas;
-    ctx.fillStyle = 'hsl(42, 100%, 10%)';
-    const n = normal.dot(lightPosition);
-    if (n <= 0) return;
-    ctx.fillStyle = `hsl(42, 100%, ${n * 6 + 10}%)`;
-  }
-
-  draw(mesh, matrix) {
-    const { faces, normals } = mesh;
-    const a = new Vec3();
-    const b = new Vec3();
-    const c = new Vec3();
-    const p0 = new Vec2();
-    const p1 = new Vec2();
-    const p2 = new Vec2();
-    const normal = new Vec3();
-    const lightPos = new Vec3(-1, 0, 1);
-    for (let i = 0; i < faces.length; i++) {
-
-      transform(faces[i][0], matrix, a);
-      transform(faces[i][1], matrix, b);
-      transform(faces[i][2], matrix, c);
-      
-      this.projectPoint(a, p0);
-      this.projectPoint(b, p1);
-      this.projectPoint(c, p2);
-      
-      // Back face culling
-      if ( ((p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)) > 0 ) {
-        continue;
-      }
-      
-      // transform normal and calc ligth
-      transform(normals[i], matrix, normal);
-      this.calculateLight(lightPos, normal);
-
-      // draw triangle
-      this.drawTriangle(p0, p1, p2);
-    }
-  }
-
   render() {
-    const { canvas, box } = this;
-    Canvas.clear(canvas, 'black');
-    this.theta -= 0.015;
-    const s = Math.sin(this.theta);
-    const c = Math.cos(this.theta);
-    const m = [
-      c, 0, -s, 0,
-      0, 1, 0, 0,
-      s, 0, c, 4,
-    ];
-    this.draw(box, m);
-    window.requestAnimationFrame(this.render.bind(this));
+    const { box } = this;
+    this.renderer.render([box]);
   }
 }
 
-new Engine();
+new Demo();
 

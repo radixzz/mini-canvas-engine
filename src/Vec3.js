@@ -7,6 +7,18 @@ export default class Vec3 {
     this.x = x;
     this.y = y;
     this.z = z;
+
+    return this;
+  }
+
+  applyMatrix4(m) {
+    const { x, y, z } = this;
+    const { elements: e } = m;
+    const w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+    this.x = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w;
+		this.y = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w;
+    this.z = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w;
+    
     return this;
   }
 
@@ -23,6 +35,7 @@ export default class Vec3 {
     this.x = ay * bz - az * by;
     this.y = az * bx - ax * bz;
     this.z = ax * by - ay * bx;
+
     return this;
   }
 
@@ -30,6 +43,7 @@ export default class Vec3 {
     this.x *= scalar;
     this.y *= scalar;
     this.z *= scalar;
+
     return this;
   }
 
@@ -54,17 +68,11 @@ export default class Vec3 {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
 
-  clamp(min, max) {
-    this.x = Math.max(min.x, Math.min(max.x, this.x));
-    this.y = Math.max(min.y, Math.min(max.y, this.y));
-    this.z = Math.max(min.z, Math.min(max.z, this.z));
-    return this;
-  }
-
   copy(v) {
     this.x = v.x;
     this.y = v.y;
     this.z = v.z;
+
     return this;
   }
 
