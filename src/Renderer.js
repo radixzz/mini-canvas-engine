@@ -1,11 +1,16 @@
-import Canvas from "./Canvas";
+import Canvas from './Canvas';
 import Vec3 from './Vec3';
 import Vec2 from './Vec2';
+import Light from './Light';
+import { clamp } from './Utils';
+
+const V3_TEMP = new Vec3();
 
 export default class Renderer {
   constructor({ elementId }) {
     this.canvas = new Canvas(elementId);
     this.canvas.resize(500, 500);
+    this.light = new Light();
   }
 
   resize(width, height) {
@@ -21,14 +26,30 @@ export default class Renderer {
 
   calculateLight(lightPosition, normal) {
     const { ctx } = this.canvas;
-    ctx.fillStyle = 'hsl(42, 100%, 10%)';
-    const n = normal.dot(lightPosition);
-    if (n <= 0) return;
-    ctx.fillStyle = `hsl(42, 100%, ${n * 6 + 10}%)`;
+    const { color, position, target } = this.light;
+    //ctx.fillStyle = this.light.color.toString();
+    //const dir = position.clone().sub(target).normalize();
+    V3_TEMP.copy(position).sub(target).normalize();
+    const n = normal.normalize().dot(V3_TEMP);
+
+    const intensity = clamp(n + 0.2, 0.05, 1);      
+    ctx.fillStyle = `hsl(0, 0%, ${intensity * 100}%)`;
+    //this.canvas.drawCircle(position.x * this.canvas.width, position.y, 10, 'white');
+  }
+
+  // This is very slow
+  getZSortedFaces(faces, matrix) {
+    const c1 = new Vec3();
+    const c2 = new Vec3();
+    return faces.sort((fa, fb) => {
+      const c1z = c1.copy(fa.centroid).applyMatrix4(matrix).z;
+      const c2z = c2.copy(fb.centroid).applyMatrix4(matrix).z;
+      return c2z - c1z;
+    });
   }
 
   draw(mesh) {
-    const { faces, normals, matrix } = mesh;
+    const { faces, matrix } = mesh;
     const a = new Vec3();
     const b = new Vec3();
     const c = new Vec3();
@@ -37,13 +58,14 @@ export default class Renderer {
     const p2 = new Vec2();
     const normal = new Vec3();
     const lightPos = new Vec3(-1, 0, 0.5);
-    for (let i = 0; i < faces.length; i++) {
-
+    const sortedFaces = this.getZSortedFaces(faces, matrix);
+    for (let i = 0; i < sortedFaces.length; i++) {
+      const face = sortedFaces[i];
       // Apply rotation, position and scaling
       // transformations to face vertices
-      a.copy(faces[i][0]).applyMatrix4(matrix);
-      b.copy(faces[i][1]).applyMatrix4(matrix);
-      c.copy(faces[i][2]).applyMatrix4(matrix);
+      a.copy(face.a).applyMatrix4(matrix);
+      b.copy(face.b).applyMatrix4(matrix);
+      c.copy(face.c).applyMatrix4(matrix);
       
       // Porject 3D positions to 2D
       this.projectPoint(a, p0);
@@ -56,13 +78,14 @@ export default class Renderer {
       }
       
       // transform normal and calc ligth
-      normal.copy(normals[i]).applyMatrix4(matrix);
+      normal.copy(face.normal).applyMatrix4(matrix);
       this.calculateLight(lightPos, normal);
 
       // draw triangle
       this.canvas.ctx.strokeStyle = this.canvas.ctx.fillStyle;
       this.canvas.drawTriangle(p0, p1, p2);
     }
+
   }
 
   render(objects) {

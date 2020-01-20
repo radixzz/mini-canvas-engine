@@ -18,7 +18,7 @@ export default class Mouse {
 
   onDown(e) {
    this.mouseDown = true;
-   this.startPosition.set(e.offsetX, e.offsetY);
+   this.startPosition.set(e.clientX, e.clientY);
   }
 
   onUp(e) {
@@ -28,10 +28,10 @@ export default class Mouse {
   onMove(e) {
     const { startPosition } = this;
     if (this.mouseDown) {
-      const x = e.offsetX - startPosition.x;
-      const y = e.offsetY - startPosition.y;
+      const x = e.clientX - startPosition.x;
+      const y = e.clientY - startPosition.y;
       this.onDrag(x, y);
-      startPosition.set(e.offsetX, e.offsetY);
+      startPosition.set(e.clientX, e.clientY);
     }
   }
 }
