@@ -1,5 +1,4 @@
 import "./styles.css";
-import Mesh from './Mesh';
 import Renderer from "./Renderer";
 import Mouse from './Mouse';
 import Quat from './Quat';
@@ -7,53 +6,13 @@ import Euler from './Euler';
 import Line from "./Line";
 import Vec3 from "./Vec3";
 import Light from "./Light";
-import axisModel from './models/axis.json';
-import Color from "./Color";
+import AxisMesh from './models/AxisMesh';
+import ArrowMesh from './models/ArrowMesh';
 
 // https://stackoverflow.com/questions/40454789/computing-face-normals-and-winding
 
 const QUAT = new Quat();
 const EULER = new Euler();
-
-class ModelMesh extends Mesh {
-  constructor() {
-    super();
-    this.vertices = axisModel.vertices;
-    this.indices = axisModel.indices;
-    
-    this.computeFaces();
-    
-    this.computeNormals();
-    this.computeCentroids();
-    this.setFaceColors();
-  }
-
-  setFaceColors() {
-    const { faces: f } = this;
-    const r = new Color(250, 60, 0);
-    const g = new Color(0, 255, 0);
-    const b = new Color(0, 0, 255);
-    // const w = new Color(255, 255, 255);
-    const colors = [
-      b, b, b, b, b, r, b, r,
-      g, g, r, r, r, r, g, g,
-      g, g, r, r, r, r, g, g,
-      g, g, b, b, b, b, r, b,
-      b, b, b, b, b, b, r, r,
-      r, r, r, r, g, g, g, g,
-      g, g, g, b, r, b, r, g,
-      g, r, r, r, r, g, g, g,
-      g, b, b, b, b, r, b, b,
-      b, b, b, b, b, r, r, r,
-      r, r, r, g, g, g, g, g,
-      g, g
-    ]
-    for (let i = 0; i < colors.length; i++) {
-      f[i].color.copy(colors[i]);
-    }
-    
-  }
-}
 
 class CircleLine extends Line {
   constructor() {
@@ -76,11 +35,11 @@ class CircleLine extends Line {
 class Demo {
   constructor() {
     this.renderer = new Renderer({ elementId: 'js-canvas' });
-    this.renderer.resize(250, 250);
+    this.renderer.resize(100, 100);
     this.renderer.clearColor.set(15, 15, 15);
     this.lastTime = 0;
     this.createLights();
-    this.mesh = this.createBox();
+    this.mesh = this.createMesh();
     this.circle = this.createCircle();
     this.render();
     this.mouse = new Mouse({
@@ -91,7 +50,7 @@ class Demo {
 
   createLights() {
     const { lights, ambientLight } = this.renderer;
-    ambientLight.intensity = 0.25;
+    ambientLight.intensity = 0.1;
     ambientLight.color.set(255, 255, 255);
     const left = new Light();
     const bottom = new Light();
@@ -100,7 +59,7 @@ class Demo {
     left.color.set(255, 255, 255);
     bottom.direction.set(0, -1, 0);
     bottom.color.set(255, 255, 255);
-    bottom.intensity = 2;
+    bottom.intensity = 3;
     lights.push(left, bottom);
   }
 
@@ -113,10 +72,10 @@ class Demo {
     return circle;
   }
 
-  createBox() {
-    const mesh = new ModelMesh(10);
-    //mesh.rotation.x = Math.PI / 4;
-    //mesh.rotation.z = Math.PI / 4;
+  createMesh() {
+    const mesh = new ArrowMesh();
+    mesh.rotation.x = Math.PI / 4;
+    mesh.rotation.y = Math.PI / 4;
     mesh.position.z = 5;
     mesh.scale.set(0.7);
     mesh.updateMatrix();

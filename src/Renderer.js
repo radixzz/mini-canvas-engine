@@ -35,7 +35,7 @@ export default class Renderer {
     const { ctx } = this.canvas;
     const finalColor = C1_TEMP.set(0);
     const ambientColor = C2_TEMP.copy(ambientLight.color);
-    let totalIntensity = 0;
+    let totalIntensity = ambientLight.intensity;
     for (let i = 0; i < lights.length; i++) {
       const light = lights[i];
       // get dot product to handle intensity
@@ -47,7 +47,7 @@ export default class Renderer {
       }
     }
     finalColor.add(ambientColor.multiplyScalar(ambientLight.intensity));
-    finalColor.lerp(face.color, clamp(totalIntensity + ambientLight.intensity, 0, 1));
+    finalColor.lerp(face.color, clamp(totalIntensity, 0, 1));
     ctx.fillStyle = finalColor.toString();
   }
 
