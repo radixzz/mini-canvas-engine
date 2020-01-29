@@ -74,7 +74,7 @@ export default class Vec3 {
   dot(v) {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
-
+  
   copy(v) {
     this.x = v.x;
     this.y = v.y;

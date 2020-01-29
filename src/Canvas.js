@@ -36,6 +36,12 @@ export default class Canvas {
     }
   }
 
+  drawLine(p0, p1) {
+    const { ctx } = this;
+    ctx.moveTo(p0.x, p0.y);
+    this.ctx.lineTo(p1.x, p1.y);
+  }
+
   drawTriangle(p0, p1, p2) {
     const { ctx } = this;
     ctx.beginPath();

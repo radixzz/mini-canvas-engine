@@ -1,39 +1,45 @@
 export default class Color {
-  constructor() {
-    this.h = 0;
-    this.s = 0;
-    this.l = 0;
+  constructor(r, g, b) {
+    this.set(r, g, b);
   }
 
-  fromRgb(r, g, b) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const avg = (max + min) / 2;
-    let [h, s, l] = [avg, avg, avg];
-    if (max === min) {
-      h = 0;
-      s = 0;
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min): d / (max + min)
-      switch(max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-        default: h = 0; break;
-      }
-      h /= 6;
-    }
-    this.h = h;
-    this.s = s;
-    this.l = l;
+  set(r = 0, g = 0, b = 0) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    return this;
+  }
+
+  lerp(color, alpha) {
+    this.r += (color.r - this.r) * alpha;
+    this.g += (color.g - this.g) * alpha;
+    this.b += (color.b - this.b) * alpha;
+    return this;
+  }
+
+  multiplyScalar(scalar) {
+    this.r *= scalar;
+    this.g *= scalar;
+    this.b *= scalar;
+    return this;
+  }
+
+  add(color) {
+    this.r += color.r;
+    this.g += color.g;
+    this.b += color.b;
+    return this;
+  }
+
+  copy(color) {
+    this.r = color.r;
+    this.g = color.g;
+    this.b = color.b;
+    return this;
   }
 
   toString() {
-    const { h, s, l } = this;
-    return `hsl(${h * 360}, ${s * 100}%, ${l * 100}%)`;
+    const { r, g, b } = this;
+    return `rgb(${r}, ${g}, ${b})`;
   }
 }
