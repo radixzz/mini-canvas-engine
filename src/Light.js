@@ -5,8 +5,7 @@ import Color from './Color';
 export default class Light {
   constructor() {
     this.intensity = 0;
-    this.position = new Vec3();
-    this.target = new Vec3();
+    this.direction = new Vec3();
     this.color = new Color();
   }
 }

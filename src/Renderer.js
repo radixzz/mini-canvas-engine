@@ -2,39 +2,53 @@ import Canvas from './Canvas';
 import Vec3 from './Vec3';
 import Vec2 from './Vec2';
 import Light from './Light';
+import Color from './Color';
 import { clamp } from './Utils';
 
-const V3_TEMP = new Vec3();
+const C1_TEMP = new Color();
+const C2_TEMP = new Color();
 
 export default class Renderer {
   constructor({ elementId }) {
     this.canvas = new Canvas(elementId);
     this.canvas.resize(500, 500);
-    this.light = new Light();
+    this.clearColor = new Color();
+    this.ambientLight = new Light();
+    this.lights = [];
   }
 
   resize(width, height) {
     this.canvas.resize(width, height);
   }
 
+  // Projects a 3D point to 2D by using
+  // Weak Perspective Projection
   projectPoint(v, target) {
     const { width, height } = this.canvas;
-    const dist = 500;
-    target.x = width / 2 + dist * v.x / v.z;
-    target.y = height / 2 + dist * v.y / v.z;
+    const focalLength = Math.min(width, height) / v.z;
+    target.x = width / 2 + focalLength * v.x;
+    target.y = height / 2 + focalLength * v.y;
   }
 
-  calculateLight(lightPosition, normal) {
+  computeFaceColor(face, normal) {
+    const { lights, ambientLight } = this;
     const { ctx } = this.canvas;
-    const { color, position, target } = this.light;
-    //ctx.fillStyle = this.light.color.toString();
-    //const dir = position.clone().sub(target).normalize();
-    V3_TEMP.copy(position).sub(target).normalize();
-    const n = normal.normalize().dot(V3_TEMP);
-
-    const intensity = clamp(n + 0.2, 0.05, 1);      
-    ctx.fillStyle = `hsl(0, 0%, ${intensity * 100}%)`;
-    //this.canvas.drawCircle(position.x * this.canvas.width, position.y, 10, 'white');
+    const finalColor = C1_TEMP.set(0);
+    const ambientColor = C2_TEMP.copy(ambientLight.color);
+    let totalIntensity = 0;
+    for (let i = 0; i < lights.length; i++) {
+      const light = lights[i];
+      // get dot product to handle intensity
+      const n = normal.normalize().dot(light.direction.normalize());
+      if (n > 0) {
+        const intensity = clamp(n * light.intensity, 0, 1);
+        finalColor.lerp(light.color, intensity);
+        totalIntensity += intensity;
+      }
+    }
+    finalColor.add(ambientColor.multiplyScalar(ambientLight.intensity));
+    finalColor.lerp(face.color, clamp(totalIntensity + ambientLight.intensity, 0, 1));
+    ctx.fillStyle = finalColor.toString();
   }
 
   // This is very slow
@@ -48,7 +62,41 @@ export default class Renderer {
     });
   }
 
-  draw(mesh) {
+  drawPoints(obj) {
+    const { canvas } = this;
+    const { points, matrix } = obj;
+    const v3 = new Vec3();
+    const v2 = new Vec2();
+    for (let i = 0; i < points.length; i++) {
+      v3.copy(points[i]).applyMatrix4(matrix);
+      this.projectPoint(v3, v2);
+      canvas.drawCircle(v2.x, v2.y);
+    }
+  }
+
+  drawLine(line) {
+    const { ctx } = this.canvas;
+    const { points, matrix } = line;
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 4;
+    const v2 = new Vec2();
+    const v3 = new Vec3();
+    v3.copy(points[0]).applyMatrix4(matrix);
+    this.projectPoint(v3, v2);
+    ctx.moveTo(v2.x, v2.y);
+    for (let i = 1; i < points.length; i++) {
+      v3.copy(points[i]).applyMatrix4(matrix);
+      this.projectPoint(v3, v2);
+      ctx.lineTo(v2.x, v2.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawMesh(mesh) {
     const { faces, matrix } = mesh;
     const a = new Vec3();
     const b = new Vec3();
@@ -57,7 +105,6 @@ export default class Renderer {
     const p1 = new Vec2();
     const p2 = new Vec2();
     const normal = new Vec3();
-    const lightPos = new Vec3(-1, 0, 0.5);
     const sortedFaces = this.getZSortedFaces(faces, matrix);
     for (let i = 0; i < sortedFaces.length; i++) {
       const face = sortedFaces[i];
@@ -66,7 +113,7 @@ export default class Renderer {
       a.copy(face.a).applyMatrix4(matrix);
       b.copy(face.b).applyMatrix4(matrix);
       c.copy(face.c).applyMatrix4(matrix);
-      
+
       // Porject 3D positions to 2D
       this.projectPoint(a, p0);
       this.projectPoint(b, p1);
@@ -79,7 +126,7 @@ export default class Renderer {
       
       // transform normal and calc ligth
       normal.copy(face.normal).applyMatrix4(matrix);
-      this.calculateLight(lightPos, normal);
+      this.computeFaceColor(face, normal);
 
       // draw triangle
       this.canvas.ctx.strokeStyle = this.canvas.ctx.fillStyle;
@@ -89,9 +136,18 @@ export default class Renderer {
   }
 
   render(objects) {
-    this.canvas.clear('black');
+    this.canvas.clear(this.clearColor.toString());
     for (let i = 0; i < objects.length; i++) {
-      this.draw(objects[i]);
+      const obj = objects[i];
+      if (obj.points) {
+        if (obj.isLine) {
+          this.drawLine(obj);
+        } else {
+          this.drawPoints(obj);
+        }
+      } else {
+        this.drawMesh(obj);
+      }
     }
     
   }

@@ -1,25 +1,13 @@
 import Vec3 from './Vec3';
-import Mat4 from './Mat4';
-import Quat from './Quat';
-import Euler from './Euler';
 import Face3 from './Face';
+import Transform from './Transform';
 
-export default class Mesh {
+export default class Mesh extends Transform {
   constructor() {
-    this.matrix = new Mat4();
-    this.quaternion = new Quat();
-    this.position = new Vec3();
-    this.rotation = new Euler();
-    this.scale = new Vec3(1);
+    super();
     this.vertices = [];
     this.indices = [];
     this.faces = [];
-  }
-
-  updateMatrix() {
-    const { matrix, scale, position, quaternion } = this;
-    //quaternion.fromEuler(rotation);
-    matrix.compose(position, quaternion, scale);
   }
 
   computeCentroids() {
